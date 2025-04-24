@@ -2,48 +2,109 @@ import {
   WebSocketGateway,
   SubscribeMessage,
   MessageBody,
+  WebSocketServer,
+  OnGatewayConnection,
 } from '@nestjs/websockets';
 import { DydxService } from './dydx.service';
-import { CompositeClient } from '@dydxprotocol/v4-client-js';
 
+import { Server } from 'socket.io';
+import { EventEmitter2 } from 'eventemitter2';
 @WebSocketGateway(80, {
-  namespace: 'app',
+  namespace: '',
+  cors: {
+    origin: '*',
+  },
 })
-export class AppGateway {
-  private client: CompositeClient;
+export class AppGateway implements OnGatewayConnection {
+  @WebSocketServer() server: Server;
 
-  constructor(private readonly dydxService: DydxService) {
-    this.client = this.dydxService.getClient();
+  constructor(
+    private readonly dydxService: DydxService,
+    private readonly eventEmitter: EventEmitter2,
+  ) {}
+
+  handleConnection(client: any) {
+    console.log(`Client connected: ${client.id}`);
   }
 
   @SubscribeMessage('message')
-  getHello(@MessageBody() data: any) {
-    console.log('Received data:', data);
-    return 'Hello';
-  }
-
-  @SubscribeMessage('getMarkets')
-  async getMarkets() {
-    try {
-      const marketsResponse =
-        await this.client.indexerClient.markets.getPerpetualMarkets();
-      console.log('Markets retrieved successfully');
-      return { event: 'markets', data: marketsResponse.markets };
-    } catch (error) {
-      console.error('Failed to get markets:', error);
-      return { event: 'error', data: 'Failed to get markets' };
+  handleMessage(@MessageBody() data: any) {
+    if (data.event === 'subscribeToOrderbook') {
+      return this.subscribeToOrderbook(data.data);
+    } else if (data.event === 'subscribeToMarket') {
+      return this.subscribeToMarket(data.data);
+    } else if (data.event === 'unsubscribeFromMarket') {
+      return this.unsubscribeFromMarket(data.data);
+    } else if (data.event === 'unsubscribeFromOrderbook') {
+      return this.unsubscribeFromOrderbook(data.data);
     }
   }
 
-  @SubscribeMessage('subscribeToMarket')
-  subscribeToMarket(@MessageBody() data: { marketId: string }) {
+  subscribeToMarket(data: { marketId: string }) {
     try {
       const socketClient = this.dydxService.getSocketClient();
-      socketClient.subscribe('v4_markets', { id: data.marketId });
-      return { event: 'subscribed', market: data.marketId };
+      socketClient.subscribe('v4_markets', {
+        id: data.marketId,
+      });
+      this.server.emit('markets', {
+        event: 'subscribed',
+        channel: 'markets',
+        market: data.marketId,
+      });
+      this.eventEmitter.addListener('message', (data) => {
+        this.server.emit('markets', data);
+      });
     } catch (error) {
       console.error('Failed to subscribe to market:', error);
       return { event: 'error', data: 'Failed to subscribe to market' };
     }
+  }
+
+  subscribeToOrderbook(data: { marketId: string }) {
+    try {
+      const { marketId } = data;
+      console.log(`Client subscribing to orderbook for market ${marketId}`);
+      const socketClient = this.dydxService.getSocketClient();
+      socketClient.subscribe('v4_orderbook', {
+        id: data.marketId,
+      });
+
+      this.server.emit('orderbooks', {
+        event: 'subscribed',
+        channel: 'orderbook',
+        market: marketId,
+      });
+
+      this.eventEmitter.addListener('message', (data) => {
+        this.server.emit('orderbooks', data);
+      });
+    } catch (error) {
+      console.error('Failed to subscribe to orderbook:', error);
+      return { event: 'error', data: 'Failed to subscribe to orderbook' };
+    }
+  }
+
+  unsubscribeFromMarket(data: { marketId: string }) {
+    const socketClient = this.dydxService.getSocketClient();
+    socketClient.unsubscribe('v4_markets', {
+      id: data.marketId,
+    });
+    this.server.emit('markets', {
+      event: 'unsubscribed',
+      channel: 'markets',
+      market: data.marketId,
+    });
+  }
+
+  unsubscribeFromOrderbook(data: { marketId: string }) {
+    const socketClient = this.dydxService.getSocketClient();
+    socketClient.unsubscribe('v4_orderbook', {
+      id: data.marketId,
+    });
+    this.server.emit('orderbooks', {
+      event: 'unsubscribed',
+      channel: 'orderbook',
+      market: data.marketId,
+    });
   }
 }

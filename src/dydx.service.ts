@@ -1,15 +1,18 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
+
 import {
   Network,
   CompositeClient,
   SocketClient,
 } from '@dydxprotocol/v4-client-js';
-
+import { EventEmitter2 } from 'eventemitter2';
 @Injectable()
 export class DydxService implements OnModuleInit {
   private client: CompositeClient;
   private socketClient: SocketClient;
   private network: Network;
+
+  constructor(private readonly eventEmitter: EventEmitter2) {}
 
   async onModuleInit() {
     await this.connect();
@@ -31,13 +34,14 @@ export class DydxService implements OnModuleInit {
       this.socketClient = new SocketClient(
         this.network.indexerConfig,
         () => {
-          console.log('Socket opened');
+          console.log('Socket connection details:', this.network.indexerConfig);
         },
         () => {
           console.log('Socket closed');
         },
         (message) => {
-          console.log('Received socket message:', message.data);
+          console.log(message.data);
+          this.eventEmitter.emit('message', message.data);
         },
         (error) => {
           console.error('Socket error:', error);
