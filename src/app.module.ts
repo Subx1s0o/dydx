@@ -1,13 +1,22 @@
 import { Module } from '@nestjs/common';
-
-import { AppGateway } from './app.gateway';
-import { DydxService } from './dydx.service';
 import { AppController } from './app.controller';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ConfigModule } from '@nestjs/config';
+import { OrderBookModule } from './orderbook/orderbook.module';
+import { DydxModule } from './dydx/dydx.module';
 
 @Module({
-  imports: [EventEmitterModule.forRoot()],
+  imports: [
+    EventEmitterModule.forRoot({
+      global: true,
+    }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+    DydxModule,
+    OrderBookModule,
+  ],
   controllers: [AppController],
-  providers: [AppGateway, DydxService],
+  providers: [],
 })
 export class AppModule {}
