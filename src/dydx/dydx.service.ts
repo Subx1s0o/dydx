@@ -153,7 +153,7 @@ export class DydxService implements OnModuleInit, OnModuleDestroy {
               console.log('Heartbeat failed - no response received after ping');
               this.reconnectWebSocket();
             }
-          }, config.intervals.heartbeat);
+          }, config.intervals.ping);
         } catch (error) {
           console.error('Error during heartbeat check:', error.message);
           this.reconnectWebSocket();
