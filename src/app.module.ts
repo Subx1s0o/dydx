@@ -4,6 +4,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ConfigModule } from '@nestjs/config';
 import { OrderBookModule } from './orderbook/orderbook.module';
 import { DydxModule } from './dydx/dydx.module';
+import { OrdersModule } from './orders/orders.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { DydxModule } from './dydx/dydx.module';
     }),
     DydxModule,
     OrderBookModule,
+    OrdersModule,
   ],
   controllers: [AppController],
   providers: [],

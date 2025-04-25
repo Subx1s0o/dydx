@@ -7,6 +7,7 @@ import {
 import { EventEmitter2 } from 'eventemitter2';
 import { ConfigService } from '@nestjs/config';
 import { DydxSocketMessage } from 'types/dydx-message.type';
+import { config } from 'src/config';
 
 @Injectable()
 export class DydxService implements OnModuleInit, OnModuleDestroy {
@@ -136,7 +137,7 @@ export class DydxService implements OnModuleInit, OnModuleDestroy {
       const currentTime = Date.now();
       const timeSinceLastMessage = currentTime - this.lastMessageTime;
 
-      if (timeSinceLastMessage > 15000) {
+      if (timeSinceLastMessage > config.intervals.heartbeat) {
         console.log(
           'No messages received in the last interval, checking connection...',
         );
@@ -148,17 +149,17 @@ export class DydxService implements OnModuleInit, OnModuleDestroy {
             const timeSinceLastMessageAfterPing =
               Date.now() - this.lastMessageTime;
 
-            if (timeSinceLastMessageAfterPing > 5000) {
+            if (timeSinceLastMessageAfterPing > config.intervals.ping) {
               console.log('Heartbeat failed - no response received after ping');
               this.reconnectWebSocket();
             }
-          }, 5000);
+          }, config.intervals.heartbeat);
         } catch (error) {
           console.error('Error during heartbeat check:', error.message);
           this.reconnectWebSocket();
         }
       }
-    }, 15000);
+    }, config.intervals.heartbeat);
   }
 
   private stopHeartbeat() {
@@ -198,13 +199,13 @@ export class DydxService implements OnModuleInit, OnModuleDestroy {
     }
 
     console.log(
-      `Attempting to reconnect in 3 seconds (attempt ${this.reconnectAttempts + 1})`,
+      `Attempting to reconnect in ${config.intervals.reconnect} milliseconds (attempt ${this.reconnectAttempts + 1})`,
     );
 
     this.reconnectTimer = setTimeout(() => {
       this.reconnectAttempts++;
       this.connectWebSocket();
-    }, 3000);
+    }, config.intervals.reconnect);
   }
 
   private cleanup() {

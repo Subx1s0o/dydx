@@ -4,20 +4,30 @@ import { config } from 'src/config';
 import { OrderbookDto } from './dto/orderbook.dto';
 import { DydxService } from '../dydx/dydx.service';
 import { OnEvent } from '@nestjs/event-emitter';
-import { Order } from 'types/orderbook.type';
 import * as crc32 from 'crc-32';
+import { findMatchingInstruments, InstrumentMapping } from 'src/helper';
 
 @Injectable()
 export class OrderBookService {
-  private orderbooks = new Map();
+  private orderbooks = new Map<string, OrderbookDto>();
+  private instrumentMappings = new Map<string, InstrumentMapping>();
 
   constructor(private readonly dydxService: DydxService) {}
 
   @OnEvent('websocketConnected')
   async handleWebSocketConnected() {
-    for (const instrument of config.instruments) {
-      this.dydxService.subcribeTo('v4_orderbook', { id: instrument });
-    }
+    const res = await this.dydxService
+      .getRestClient()
+      .indexerClient.markets.getPerpetualMarkets();
+
+    const availableInstruments = findMatchingInstruments(res.markets);
+
+    availableInstruments.forEach((instrument) => {
+      // Store mappings to lookup by original format later
+      this.instrumentMappings.set(instrument.original, instrument);
+
+      this.dydxService.subcribeTo('v4_orderbook', { id: instrument.dydx });
+    });
   }
 
   @OnEvent('websocketDisconnected')
@@ -28,11 +38,20 @@ export class OrderBookService {
 
   @OnEvent('handleOrderbookMessage')
   async handleOrderbookMessage(instrument: string, data: any) {
-    let orderbook = this.orderbooks.get(instrument);
+    const mapping = Array.from(this.instrumentMappings.values()).find(
+      (mapping) => mapping.dydx === instrument,
+    );
+
+    if (!mapping) {
+      console.warn(`No mapping found for instrument: ${instrument}`);
+      return;
+    }
+
+    let orderbook = this.orderbooks.get(mapping.original);
 
     if (!orderbook) {
       orderbook = new OrderbookDto();
-      orderbook.instrument = instrument;
+      orderbook.instrument = mapping.original;
       orderbook.asks = [];
       orderbook.bids = [];
       orderbook.ts = '';
@@ -49,7 +68,7 @@ export class OrderBookService {
       this.limitOrderbookSize(orderbook.bids);
     }
 
-    this.orderbooks.set(instrument, orderbook);
+    this.orderbooks.set(mapping.original, orderbook);
   }
 
   private limitOrderbookSize(data: any[]) {
@@ -71,14 +90,14 @@ export class OrderBookService {
     }
   }
 
-  private computeChecksum(bids: Order[], asks: Order[]): number {
+  private computeChecksum(bids: any[], asks: any[]): number {
     const depth = 10;
 
-    const formatValue = (value: string): string => {
-      return value.replace('.', '').replace(/^0+/, '');
+    const formatValue = (value: string | number): string => {
+      return String(value).replace('.', '').replace(/^0+/, '');
     };
 
-    const formatLevels = (levels: Order[]): string[] =>
+    const formatLevels = (levels: any[]): string[] =>
       levels.slice(0, depth).map((level) => {
         const price = formatValue(level.price);
         const qty = formatValue(level.qty);
