@@ -136,7 +136,7 @@ export class DydxService implements OnModuleInit, OnModuleDestroy {
       const currentTime = Date.now();
       const timeSinceLastMessage = currentTime - this.lastMessageTime;
 
-      if (timeSinceLastMessage > 5000) {
+      if (timeSinceLastMessage > 15000) {
         console.log(
           'No messages received in the last interval, checking connection...',
         );
@@ -158,7 +158,7 @@ export class DydxService implements OnModuleInit, OnModuleDestroy {
           this.reconnectWebSocket();
         }
       }
-    }, 5000);
+    }, 15000);
   }
 
   private stopHeartbeat() {
