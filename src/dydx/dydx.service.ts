@@ -73,10 +73,8 @@ export class DydxService implements OnModuleInit, OnModuleDestroy {
           this.eventEmitter.emit('websocketConnected');
         },
 
-        // On disconnect
-        () => {
-          this.handleWebSocketDisconnect();
-        },
+        // On disconnect AKA not working
+        () => {},
 
         // On message
         (message) => {
@@ -88,6 +86,8 @@ export class DydxService implements OnModuleInit, OnModuleDestroy {
             if (data.channel === 'v4_orderbook') {
               this.eventEmitter.emit('handleOrderbookMessage', data.id, data);
             }
+
+            // TODO: Handle other channels
           } catch (error) {
             console.error('Error parsing WebSocket message:', error.message);
           }
@@ -136,7 +136,7 @@ export class DydxService implements OnModuleInit, OnModuleDestroy {
       const currentTime = Date.now();
       const timeSinceLastMessage = currentTime - this.lastMessageTime;
 
-      if (timeSinceLastMessage > 15000) {
+      if (timeSinceLastMessage > 5000) {
         console.log(
           'No messages received in the last interval, checking connection...',
         );
@@ -158,7 +158,7 @@ export class DydxService implements OnModuleInit, OnModuleDestroy {
           this.reconnectWebSocket();
         }
       }
-    }, 15000);
+    }, 5000);
   }
 
   private stopHeartbeat() {

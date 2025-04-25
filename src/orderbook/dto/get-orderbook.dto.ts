@@ -5,5 +5,5 @@ export class GetOrderBookDto {
   instrument: string;
 
   @IsOptional()
-  limit: number;
+  limit: number = 25;
 }
