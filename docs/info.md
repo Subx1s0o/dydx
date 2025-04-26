@@ -29,6 +29,18 @@
 - The account only contains USDC, while positions simulate exposure to various assets.
 - Trading is based on **margin** — the USDC balance acts as collateral for open positions.
 
+### Order Modification
+
+dYdX v4 does not support modifying existing orders. Orders are immutable once placed on-chain.
+
+To change an order's price or quantity:
+1. Cancel the original order
+2. Create a new order with the desired parameters
+
+The protocol only provides two order-related transaction messages:
+- `MsgPlaceOrder` - for creating orders
+- `MsgCancelOrder` - for canceling orders
+
 ### Important Notes:
 
 - **GTT orders** remain available through the API after being canceled.
@@ -37,3 +49,4 @@
   
 **Reason:**  
 IOC orders are treated as "instant execution attempts". If they fail or are partially filled and canceled, they are considered ephemeral and not recorded for long-term storage.
+

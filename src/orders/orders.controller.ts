@@ -1,15 +1,6 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Post,
-  Put,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Post, Query } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
-import { UpdateOrderDto } from './dto/update-order.dto';
 import { CancelOrderDto } from './dto/cancel-order.dto';
 import { findOneOrderDto } from './dto/find-one-order.dto';
 import { GetOrdersDto } from './dto/find-all-orders.dto';
@@ -21,11 +12,6 @@ export class OrdersController {
   @Post()
   createOrder(@Body() data: CreateOrderDto) {
     return this.ordersService.createOrder(data);
-  }
-
-  @Put()
-  updateOrder(@Body() data: UpdateOrderDto) {
-    return this.ordersService.updateOrder(data);
   }
 
   @Delete()

@@ -6,7 +6,6 @@ import {
 import { CancelOrderDto } from './dto/cancel-order.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { findOneOrderDto } from './dto/find-one-order.dto';
-import { UpdateOrderDto } from './dto/update-order.dto';
 import { DydxService } from 'src/dydx/dydx.service';
 import {
   CompositeClient,
@@ -49,7 +48,7 @@ export class OrdersService {
     }
 
     try {
-      return await this.client.placeOrder(
+      await this.client.placeOrder(
         this.subaccount, // SUBACCOUNT
         dydxInstrument, // INSTRUMENT
         data.type, // ORDER TYPE
@@ -62,13 +61,12 @@ export class OrdersService {
         undefined, // EXECUTION
         data.post_only, // POST ONLY
       );
+      return { message: 'Order created' };
     } catch (error) {
-      console.log('Error creating order', error);
+      console.log(error);
       throw new BadRequestException('Error creating order: ' + error.message);
     }
   }
-
-  async updateOrder(data: UpdateOrderDto) {}
 
   async cancelOrder(data: CancelOrderDto) {
     const order = await this.getRawOrder(data.order_id); // ADD CACHING
