@@ -3,7 +3,6 @@ import { AppController } from './app.controller';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ConfigModule } from '@nestjs/config';
 import { OrderBookModule } from './orderbook/orderbook.module';
-import { DydxModule } from './dydx/dydx.module';
 import { OrdersModule } from './orders/orders.module';
 import { InstrumentsModule } from './instruments/instruments.module';
 
@@ -15,7 +14,6 @@ import { InstrumentsModule } from './instruments/instruments.module';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    DydxModule,
     OrderBookModule,
     OrdersModule,
     InstrumentsModule,
