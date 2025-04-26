@@ -5,7 +5,7 @@ import { OrderbookDto } from './dto/orderbook.dto';
 import { DydxService } from '../dydx/dydx.service';
 import { OnEvent } from '@nestjs/event-emitter';
 import * as crc32 from 'crc-32';
-import { findMatchingInstruments, InstrumentMapping } from 'src/helper';
+import { findMatchingInstruments, InstrumentMapping } from 'utils/utils';
 
 @Injectable()
 export class OrderBookService {
