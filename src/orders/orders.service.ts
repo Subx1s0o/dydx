@@ -1,10 +1,18 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CancelOrderDto } from './dto/cancel-order.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { findOneOrderDto } from './dto/find-one-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { DydxService } from 'src/dydx/dydx.service';
-import { CompositeClient, SubaccountInfo } from '@dydxprotocol/v4-client-js';
+import {
+  CompositeClient,
+  OrderFlags,
+  SubaccountInfo,
+} from '@dydxprotocol/v4-client-js';
 import {
   formatFromDydxInstrument,
   formatToDydxInstrument,
@@ -28,53 +36,84 @@ export class OrdersService {
   async createOrder(data: CreateOrderDto) {
     const dydxInstrument = formatToDydxInstrument(data.instrument);
 
-    const postOnly =
-      data.type === 'LIMIT' && data.time_in_force === 'GTT' ? true : undefined;
+    let goodTilTimeInSeconds = undefined;
 
-    const goodTilTimeInSeconds =
-      data.time_in_force === 'GTT' ? 86400 : undefined;
+    if (data.time_in_force === 'GTT') {
+      if (!data.good_til_time_value) {
+        throw new BadRequestException('Good till time value is required');
+      }
 
-    const clientOrderId = data.client_order_id
-      ? +data.client_order_id
-      : Math.floor(Math.random() * 1000000) + Date.now();
+      goodTilTimeInSeconds = Math.floor(
+        new Date(data.good_til_time_value).getTime() / 1000,
+      );
+    }
 
     try {
       return await this.client.placeOrder(
-        this.subaccount,
-        dydxInstrument,
-        data.type,
-        data.side,
-        data.limit_price ? data.limit_price : 0,
-        data.quantity,
-        clientOrderId,
-        data.time_in_force,
-        goodTilTimeInSeconds,
-        undefined,
-        postOnly,
+        this.subaccount, // SUBACCOUNT
+        dydxInstrument, // INSTRUMENT
+        data.type, // ORDER TYPE
+        data.side, // ORDER SIDE
+        data.limit_price ? data.limit_price : 0, // LIMIT PRICE
+        data.quantity, // QUANTITY
+        +data.client_order_id, // CLIENT ORDER ID
+        data.time_in_force, // TIME IN FORCE
+        goodTilTimeInSeconds, // GOOD TILL TIME IN SECONDS
+        undefined, // EXECUTION
+        data.post_only, // POST ONLY
       );
     } catch (error) {
       console.log('Error creating order', error);
+      throw new BadRequestException('Error creating order: ' + error.message);
     }
   }
 
-  async updateOrder(data: UpdateOrderDto) {
-    // Support only by placing a new order with the same client_order_id so API replace the data
-  }
+  async updateOrder(data: UpdateOrderDto) {}
 
   async cancelOrder(data: CancelOrderDto) {
-    try {
-      const order = await this.getRawOrder(data.order_id);
-
-      await this.client.cancelOrder(
-        this.subaccount,
-        order.clientId,
-        order.orderFlags,
-        order.ticker,
-        0,
-        order.goodTilTimeInSeconds,
+    const order = await this.getRawOrder(data.order_id); // ADD CACHING
+    if (!order || order.status !== 'OPEN') {
+      throw new NotFoundException(
+        !order
+          ? `Order ${data.order_id} not found`
+          : `Order ${data.order_id} is already ${order.status}`,
       );
-    } catch (error) {
-      throw new NotFoundException(error.message);
+    }
+
+    // Flags mapping
+    const flags = +order.orderFlags as OrderFlags;
+
+    // Get network time
+    const timeResp = await this.client.indexerClient.utility.getTime();
+
+    // Get current time in seconds
+    const nowSec = Math.floor(timeResp.epoch / 1000);
+
+    // Prepare Good Till Time in seconds
+    let goodTilBlock = 0;
+    let goodTilTimeInSeconds = 0;
+
+    if (flags === OrderFlags.SHORT_TERM) {
+      // For short term orders use TTL in blocks
+      const { height } = await this.client.indexerClient.utility.getHeight();
+      goodTilBlock = height + 10; // <= ShortBlockWindow (current + 10 blocks), max +20 blocks
+    } else {
+      // For LONG_TERM/CONDITIONAL use TTL in time
+      const BUFFER_SEC = 30;
+      goodTilTimeInSeconds = nowSec + BUFFER_SEC;
+    }
+
+    try {
+      return await this.client.cancelOrder(
+        this.subaccount, // SUBACCOUNT
+        Number(order.clientId), // CLIENT ORDER ID
+        flags, // ORDER FLAG (SHORT_TERM, LONG_TERM, CONDITIONAL)
+        order.ticker, // INSTRUMENT
+        goodTilBlock, // GOOD TILL BLOCK
+        goodTilTimeInSeconds, // GOOD TILL TIME IN SECONDS
+      );
+    } catch (err) {
+      throw new NotFoundException(`Cancel order failed: ${err.message}`);
     }
   }
 
@@ -115,12 +154,6 @@ export class OrdersService {
       });
     }
 
-    result.sort((a, b) => {
-      const aTime = new Date(a.updatedAt).getTime();
-      const bTime = new Date(b.updatedAt).getTime();
-      return bTime - aTime;
-    });
-
     const customOrders: Order[] = [];
 
     for (const order of result) {
@@ -128,6 +161,13 @@ export class OrdersService {
 
       customOrders.push(customOrder);
     }
+
+    customOrders.sort((a, b) => {
+      const aTime = new Date(a.updated_at).getTime();
+      const bTime = new Date(b.updated_at).getTime();
+      return bTime - aTime;
+    });
+
     return customOrders;
   }
 
