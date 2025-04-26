@@ -1,4 +1,20 @@
-# How dYdX API Trading Works 
+# Hown setup dYdX and how API Works 
+
+### Setting up access to dYdX:
+
+1. **Connect your waller on the dYdX exchange:**
+   - Go to the official dYdX v4 website
+     - TESTNET: https://v4.testnet.dydx.exchange/trade/BTC-USD 
+     - MAINNET: https://dydx.trade/trade/BTC-USD
+   - Make sure your account is fully activated, which requires making a USDC deposit
+
+2. **Get the mnemonic phrase:**
+   - After creating your dYdX account, export the mnemonic phrase
+
+3. **System configuration:**
+   - Add the mnemonic phrase to your env variables (WALLET_MNEMONIC)
+   - The system will create a local wallet based on this phrase
+   - All trading operations will be signed with keys generated from this phrase
 
 ## Basic Principles
 
@@ -49,4 +65,3 @@ The protocol only provides two order-related transaction messages:
   
 **Reason:**  
 IOC orders are treated as "instant execution attempts". If they fail or are partially filled and canceled, they are considered ephemeral and not recorded for long-term storage.
-
