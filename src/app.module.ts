@@ -5,6 +5,7 @@ import { ConfigModule } from '@nestjs/config';
 import { OrderBookModule } from './orderbook/orderbook.module';
 import { OrdersModule } from './orders/orders.module';
 import { InstrumentsModule } from './instruments/instruments.module';
+import { AccountModule } from './account/account.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { InstrumentsModule } from './instruments/instruments.module';
     OrderBookModule,
     OrdersModule,
     InstrumentsModule,
+    AccountModule,
   ],
   controllers: [AppController],
   providers: [],
