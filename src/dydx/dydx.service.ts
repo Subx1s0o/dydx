@@ -3,7 +3,11 @@ import {
   Network,
   CompositeClient,
   SocketClient,
+  SubaccountInfo,
+  LocalWallet,
+  BECH32_PREFIX,
 } from '@dydxprotocol/v4-client-js';
+
 import { EventEmitter2 } from 'eventemitter2';
 import { ConfigService } from '@nestjs/config';
 import { DydxSocketMessage } from 'types/dydx-message.type';
@@ -14,6 +18,7 @@ export class DydxService implements OnModuleInit, OnModuleDestroy {
   private restClient: CompositeClient | null = null;
   private wsClient: SocketClient | null = null;
   private network: Network;
+  private subaccount: SubaccountInfo;
   private isWsConnected = false;
 
   private heartbeatInterval: NodeJS.Timeout | null = null;
@@ -39,16 +44,21 @@ export class DydxService implements OnModuleInit, OnModuleDestroy {
 
   private async connectRest() {
     try {
+      const isTestnet = this.configService.getOrThrow('IS_TESTNET');
       this.network =
-        this.configService.get('IS_TESTNET') === true
-          ? Network.testnet()
-          : Network.mainnet();
-
+        isTestnet === 'true' ? Network.testnet() : Network.mainnet();
       this.restClient = await CompositeClient.connect(this.network);
+
+      const wallet = await LocalWallet.fromMnemonic(
+        this.configService.get('WALLET_MNEMONIC'),
+        BECH32_PREFIX,
+      );
+
+      this.subaccount = new SubaccountInfo(wallet, 0);
 
       console.log('Connected to dYdX REST API');
     } catch (error) {
-      console.error('Failed to connect to REST API:', error.message);
+      console.error('Failed to connect to REST API:', error);
     }
   }
 
@@ -95,7 +105,7 @@ export class DydxService implements OnModuleInit, OnModuleDestroy {
         },
 
         // On error
-        (error) => {
+        () => {
           this.handleWebSocketDisconnect();
           this.reconnectWebSocket();
         },
@@ -121,6 +131,22 @@ export class DydxService implements OnModuleInit, OnModuleDestroy {
       console.warn('Cannot subscribe: WebSocket not connected');
       this.reconnectWebSocket();
     }
+  }
+
+  getRestClient(): CompositeClient | null {
+    return this.restClient;
+  }
+
+  getSubaccount(): SubaccountInfo {
+    return this.subaccount;
+  }
+
+  getSocketClient(): SocketClient | null {
+    return this.wsClient;
+  }
+
+  isWebSocketConnected(): boolean {
+    return this.wsClient !== null && this.isWsConnected;
   }
 
   private startHeartbeat() {
@@ -230,17 +256,5 @@ export class DydxService implements OnModuleInit, OnModuleDestroy {
 
     this.eventEmitter.emit('websocketDisconnected');
     this.eventEmitter.removeAllListeners();
-  }
-
-  getRestClient(): CompositeClient | null {
-    return this.restClient;
-  }
-
-  getSocketClient(): SocketClient | null {
-    return this.wsClient;
-  }
-
-  isWebSocketConnected(): boolean {
-    return this.wsClient !== null && this.isWsConnected;
   }
 }
