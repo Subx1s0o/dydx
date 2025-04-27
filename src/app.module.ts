@@ -6,6 +6,7 @@ import { OrderBookModule } from './orderbook/orderbook.module';
 import { OrdersModule } from './orders/orders.module';
 import { InstrumentsModule } from './instruments/instruments.module';
 import { AccountModule } from './account/account.module';
+import { CacheModule } from '@nestjs/cache-manager';
 
 @Module({
   imports: [
@@ -19,6 +20,9 @@ import { AccountModule } from './account/account.module';
     OrdersModule,
     InstrumentsModule,
     AccountModule,
+    CacheModule.register({
+      isGlobal: true,
+    }),
   ],
   controllers: [AppController],
   providers: [],

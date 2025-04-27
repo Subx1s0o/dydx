@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -19,13 +20,18 @@ import {
 } from 'utils/utils';
 import { GetOrdersDto } from './dto/find-all-orders.dto';
 import { Order } from './entities/order.entity';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 
 @Injectable()
 export class OrdersService {
   private client: CompositeClient;
   private subaccount: SubaccountInfo;
 
-  constructor(private readonly dydxService: DydxService) {}
+  constructor(
+    private readonly dydxService: DydxService,
+    @Inject(CACHE_MANAGER) private readonly cacheService: Cache,
+  ) {}
 
   onApplicationBootstrap() {
     this.client = this.dydxService.getRestClient();
@@ -68,7 +74,7 @@ export class OrdersService {
   }
 
   async cancelOrder(data: CancelOrderDto) {
-    const order = await this.getRawOrder(data.order_id); // ADD CACHING
+    const order = await this.getRawOrder(data.order_id);
     if (!order || order.status !== 'OPEN') {
       throw new NotFoundException(
         !order
@@ -175,7 +181,13 @@ export class OrdersService {
   }
 
   private async getRawOrder(orderId: string) {
-    return await this.client.indexerClient.account.getOrder(orderId);
+    const cachedOrder = await this.cacheService.get(orderId);
+    if (cachedOrder) {
+      return cachedOrder;
+    }
+    const order = await this.client.indexerClient.account.getOrder(orderId);
+    await this.cacheService.set(orderId, order);
+    return order;
   }
 
   private transformOrder(order: any): Order {
