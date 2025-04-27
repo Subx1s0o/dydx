@@ -4,8 +4,8 @@
 
 1. **Connect your waller on the dYdX exchange:**
    - Go to the official dYdX v4 website
-     - TESTNET: https://v4.testnet.dydx.exchange/trade/BTC-USD 
-     - MAINNET: https://dydx.trade/trade/BTC-USD
+     - TESTNET: https://v4.testnet.dydx.exchange
+     - MAINNET: https://dydx.trade
    - Make sure your account is fully activated, which requires making a USDC deposit
 
 2. **Get the mnemonic phrase:**
