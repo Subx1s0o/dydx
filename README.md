@@ -62,6 +62,7 @@ The protocol only provides two order-related transaction messages:
 - **GTT orders** remain available through the API after being canceled.
 - **IOC orders** that are canceled (i.e., unfilled or partially unfilled) are **not stored** in the order history via API. They are automatically removed after the cancelation. As a result, canceled IOC orders will not appear in history of orders.
 - **FOK orders** are deprecated and no supported.
+- Api always shows the status 200, even if the order was not created, or the order was created but instantly cancelled on dydx, it is not possible to handle it. In some cases, the api may not save orders to the history
   
 # Errors
 
