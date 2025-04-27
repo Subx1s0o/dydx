@@ -35,15 +35,13 @@ export class OrdersService {
   async createOrder(data: CreateOrderDto) {
     const dydxInstrument = formatToDydxInstrument(data.instrument);
 
-    let goodTilTimeInSeconds = undefined;
-
-    if (data.time_in_force === 'GTT') {
-      if (!data.good_til_time_value) {
-        throw new BadRequestException('Good till time value is required');
-      }
-
-      goodTilTimeInSeconds = Math.floor(
-        new Date(data.good_til_time_value).getTime() / 1000,
+    if (
+      data.type === 'LIMIT' &&
+      data.time_in_force === 'GTT' &&
+      !data.post_only
+    ) {
+      throw new BadRequestException(
+        'postOnly must be set if order type is LIMIT and timeInForce is GTT',
       );
     }
 
@@ -57,9 +55,10 @@ export class OrdersService {
         data.quantity, // QUANTITY
         +data.client_order_id, // CLIENT ORDER ID
         data.time_in_force, // TIME IN FORCE
-        goodTilTimeInSeconds, // GOOD TILL TIME IN SECONDS
+        data.good_til_time_value, // GOOD TILL TIME IN SECONDS
         undefined, // EXECUTION
-        data.post_only, // POST ONLY
+        data.post_only || undefined, // POST ONLY
+        data.reduce_only || undefined, // REDUCE ONLY
       );
       return { message: 'Order created' };
     } catch (error) {

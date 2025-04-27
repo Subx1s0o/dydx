@@ -1,5 +1,5 @@
 import { SubaccountInfo } from '@dydxprotocol/v4-client-js';
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { DydxService } from 'src/dydx/dydx.service';
 import { CompositeClient } from '@dydxprotocol/v4-client-js';
 import { Account } from './dto/account';
@@ -53,5 +53,27 @@ export class AccountService {
     }
 
     return myPos;
+  }
+
+  async withdraw(amount: string, address: string) {
+    try {
+      await this.client.withdrawFromSubaccount(
+        this.subaccount,
+        amount,
+        address,
+      );
+      return { message: 'Withdrawal successful' };
+    } catch (error) {
+      throw new BadRequestException('Error withdrawing: ' + error.message);
+    }
+  }
+
+  async deposit(amount: string) {
+    try {
+      await this.client.depositToSubaccount(this.subaccount, amount);
+      return { message: 'Deposit successful' };
+    } catch (error) {
+      throw new BadRequestException('Error depositing: ' + error.message);
+    }
   }
 }
