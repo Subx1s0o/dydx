@@ -1,4 +1,4 @@
-# Hown setup dYdX and how API Works 
+# How to setup dYdX and how API Works 
 
 ### Setting up access to dYdX:
 
@@ -63,10 +63,6 @@ The protocol only provides two order-related transaction messages:
 - **IOC orders** that are canceled (i.e., unfilled or partially unfilled) are **not stored** in the order history via API. They are automatically removed after the cancelation. As a result, canceled IOC orders will not appear in history of orders.
 - **FOK orders** are deprecated and no supported.
   
-**Reason:**  
-IOC orders are treated as "instant execution attempts". If they fail or are partially filled and canceled, they are considered ephemeral and not recorded for long-term storage.
-
-
 # Errors
 
 ## NewlyUndercollateralized
