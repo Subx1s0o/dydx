@@ -1,11 +1,11 @@
-# Hown setup dYdX and how API Works 
+# How to setup dYdX and how API Works 
 
 ### Setting up access to dYdX:
 
 1. **Connect your waller on the dYdX exchange:**
    - Go to the official dYdX v4 website
-     - TESTNET: https://v4.testnet.dydx.exchange/trade/BTC-USD 
-     - MAINNET: https://dydx.trade/trade/BTC-USD
+     - TESTNET: https://v4.testnet.dydx.exchange
+     - MAINNET: https://dydx.trade
    - Make sure your account is fully activated, which requires making a USDC deposit
 
 2. **Get the mnemonic phrase:**
@@ -62,11 +62,8 @@ The protocol only provides two order-related transaction messages:
 - **GTT orders** remain available through the API after being canceled.
 - **IOC orders** that are canceled (i.e., unfilled or partially unfilled) are **not stored** in the order history via API. They are automatically removed after the cancelation. As a result, canceled IOC orders will not appear in history of orders.
 - **FOK orders** are deprecated and no supported.
+- Api always shows the status 200, even if the order was not created, or the order was created but instantly cancelled on dydx, it is not possible to handle it. In some cases, the api may not save orders to the history
   
-**Reason:**  
-IOC orders are treated as "instant execution attempts". If they fail or are partially filled and canceled, they are considered ephemeral and not recorded for long-term storage.
-
-
 # Errors
 
 ## NewlyUndercollateralized
