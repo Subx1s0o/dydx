@@ -23,9 +23,7 @@ export class OrderBookService {
     const availableInstruments = findMatchingInstruments(res.markets);
 
     availableInstruments.forEach((instrument) => {
-      // Store mappings to lookup by original format later
       this.instrumentMappings.set(instrument.original, instrument);
-
       this.dydxService.subcribeTo('v4_orderbook', { id: instrument.dydx });
     });
   }

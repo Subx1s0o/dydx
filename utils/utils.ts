@@ -56,11 +56,5 @@ export function parseOrderFlags(orderFlags: string | number) {
   } else {
     parsedFlags = undefined;
   }
-
-  const goodTilTimeInSeconds =
-    flagsNum === OrderFlags.LONG_TERM || flagsNum === OrderFlags.CONDITIONAL
-      ? 86400
-      : 0;
-
-  return { orderFlags: parsedFlags, goodTilTimeInSeconds };
+  return parsedFlags;
 }

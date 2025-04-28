@@ -15,7 +15,6 @@ export class Order {
   status: OrderStatus;
   price?: string;
   order_flags?: string;
-  good_til_time_in_seconds?: number;
   quantity?: string;
   updated_at?: string;
 }

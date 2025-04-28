@@ -83,25 +83,19 @@ export class OrdersService {
       );
     }
 
-    // Flags mapping
     const flags = +order.orderFlags as OrderFlags;
 
-    // Get network time
     const timeResp = await this.client.indexerClient.utility.getTime();
 
-    // Get current time in seconds
     const nowSec = Math.floor(timeResp.epoch / 1000);
 
-    // Prepare Good Till Time in seconds
     let goodTilBlock = 0;
     let goodTilTimeInSeconds = 0;
 
     if (flags === OrderFlags.SHORT_TERM) {
-      // For short term orders use TTL in blocks
       const { height } = await this.client.indexerClient.utility.getHeight();
-      goodTilBlock = height + 10; // <= ShortBlockWindow (current + 10 blocks), max +20 blocks
+      goodTilBlock = height + 10;
     } else {
-      // For LONG_TERM/CONDITIONAL use TTL in time
       const BUFFER_SEC = 30;
       goodTilTimeInSeconds = nowSec + BUFFER_SEC;
     }
@@ -191,6 +185,7 @@ export class OrdersService {
   }
 
   private transformOrder(order: any): Order {
+    console.log(order);
     const customOrder = new Order();
     customOrder.order_id = order.id;
     customOrder.client_order_id = order.clientId;
@@ -203,11 +198,8 @@ export class OrdersService {
     customOrder.time_in_force = order.timeInForce;
     customOrder.updated_at = order.updatedAt;
 
-    const { orderFlags, goodTilTimeInSeconds } = parseOrderFlags(
-      order.orderFlags,
-    );
+    const orderFlags = parseOrderFlags(order.orderFlags);
     customOrder.order_flags = orderFlags;
-    customOrder.good_til_time_in_seconds = goodTilTimeInSeconds;
 
     return customOrder;
   }
