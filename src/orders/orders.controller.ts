@@ -1,9 +1,18 @@
-import { Body, Controller, Delete, Get, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Post,
+  Put,
+  Query,
+} from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { CancelOrderDto } from './dto/cancel-order.dto';
 import { findOneOrderDto } from './dto/find-one-order.dto';
 import { GetOrdersDto } from './dto/find-all-orders.dto';
+import { UpdateOrderDto } from './dto/update-order.dto';
 
 @Controller('v1/order')
 export class OrdersController {
@@ -17,6 +26,11 @@ export class OrdersController {
   @Delete()
   cancel(@Body() cancelOrderInputDto: CancelOrderDto) {
     return this.ordersService.cancelOrder(cancelOrderInputDto);
+  }
+
+  @Put()
+  update(@Body() updateOrderDto: UpdateOrderDto) {
+    return this.ordersService.updateOrder(updateOrderDto);
   }
 
   @Get()

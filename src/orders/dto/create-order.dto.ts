@@ -3,9 +3,7 @@ import {
   IsIn,
   IsNotEmpty,
   IsOptional,
-  IsBoolean,
   ValidateIf,
-  IsNumber,
 } from 'class-validator';
 
 import {
@@ -34,19 +32,6 @@ export class CreateOrderDto {
   @IsOptional()
   @IsIn(Object.keys(OrderTimeInForce))
   time_in_force?: OrderTimeInForce;
-
-  @IsBoolean()
-  @ValidateIf((o) => o.time_in_force == OrderTimeInForce.GTT)
-  post_only: boolean;
-
-  @IsBoolean()
-  @ValidateIf((o) => o.time_in_force == OrderTimeInForce.IOC)
-  reduce_only: boolean;
-
-  @IsOptional()
-  @IsNumber()
-  @ValidateIf((o) => o.time_in_force == OrderTimeInForce.GTT)
-  good_til_time_value?: number;
 
   @ValidateIf((o) => o.type == OrderType.LIMIT)
   @IsOptional()

@@ -22,6 +22,7 @@ import { GetOrdersDto } from './dto/find-all-orders.dto';
 import { Order } from './entities/order.entity';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
+import { UpdateOrderDto } from './dto/update-order.dto';
 
 @Injectable()
 export class OrdersService {
@@ -41,16 +42,6 @@ export class OrdersService {
   async createOrder(data: CreateOrderDto) {
     const dydxInstrument = formatToDydxInstrument(data.instrument);
 
-    if (
-      data.type === 'LIMIT' &&
-      data.time_in_force === 'GTT' &&
-      !data.post_only
-    ) {
-      throw new BadRequestException(
-        'postOnly must be set if order type is LIMIT and timeInForce is GTT',
-      );
-    }
-
     try {
       await this.client.placeOrder(
         this.subaccount, // SUBACCOUNT
@@ -61,20 +52,42 @@ export class OrdersService {
         data.quantity, // QUANTITY
         +data.client_order_id, // CLIENT ORDER ID
         data.time_in_force, // TIME IN FORCE
-        data.good_til_time_value, // GOOD TILL TIME IN SECONDS
+        data.time_in_force === 'GTT' ? 86400 : undefined, // GOOD TILL TIME IN SECONDS
         undefined, // EXECUTION
-        data.post_only || undefined, // POST ONLY
-        data.reduce_only || undefined, // REDUCE ONLY
+        data.time_in_force === 'GTT' ? true : undefined, // POST ONLY
+        undefined, // REDUCE ONLY
       );
       return { message: 'Order created' };
     } catch (error) {
-      console.log(error);
       throw new BadRequestException('Error creating order: ' + error.message);
     }
   }
 
-  async cancelOrder(data: CancelOrderDto) {
-    const order = await this.getRawOrder(data.order_id);
+  async updateOrder(data: UpdateOrderDto) {
+    try {
+      const order = await this.getRawOrder(data.orderId, false);
+
+      await this.cancelOrder({ order_id: order.id });
+
+      await this.createOrder({
+        client_order_id: order.clientId,
+        instrument: data.instrument ? data.instrument : order.ticker,
+        quantity: data.quantity ? data.quantity : order.size,
+        limit_price: data.limit_price ? data.limit_price : order.limitPrice,
+        side: order.side,
+        type: order.type,
+        time_in_force: order.timeInForce,
+      });
+    } catch (error) {
+      throw new BadRequestException('Error updating order: ' + error.message);
+    }
+  }
+
+  async cancelOrder(data: CancelOrderDto, order?: any) {
+    if (!order) {
+      order = await this.getRawOrder(data.order_id, false);
+    }
+
     if (!order || order.status !== 'OPEN') {
       throw new NotFoundException(
         !order
@@ -101,7 +114,7 @@ export class OrdersService {
     }
 
     try {
-      return await this.client.cancelOrder(
+      await this.client.cancelOrder(
         this.subaccount, // SUBACCOUNT
         Number(order.clientId), // CLIENT ORDER ID
         flags, // ORDER FLAG (SHORT_TERM, LONG_TERM, CONDITIONAL)
@@ -174,18 +187,21 @@ export class OrdersService {
     return this.transformOrder(order);
   }
 
-  private async getRawOrder(orderId: string) {
-    const cachedOrder = await this.cacheService.get(orderId);
-    if (cachedOrder) {
-      return cachedOrder;
+  private async getRawOrder(orderId: string, cache = true) {
+    if (cache) {
+      const cachedOrder = await this.cacheService.get(orderId);
+      if (cachedOrder) {
+        return cachedOrder;
+      }
     }
     const order = await this.client.indexerClient.account.getOrder(orderId);
-    await this.cacheService.set(orderId, order);
+    if (cache) {
+      await this.cacheService.set(orderId, order);
+    }
     return order;
   }
 
   private transformOrder(order: any): Order {
-    console.log(order);
     const customOrder = new Order();
     customOrder.order_id = order.id;
     customOrder.client_order_id = order.clientId;
