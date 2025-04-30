@@ -7,13 +7,14 @@ export interface InstrumentMapping {
 }
 
 export function formatToDydxInstrument(instrument: string): string {
-  const baseAsset = instrument.split('/')[0];
+  const baseAsset = instrument.replace(/USDT$/, '');
+
   return `${baseAsset}-USD`;
 }
 
 export function formatFromDydxInstrument(dydxInstrument: string): string {
   const baseAsset = dydxInstrument.split('-')[0];
-  return `${baseAsset}/USDT`;
+  return `${baseAsset}USDT`;
 }
 
 export function findMatchingInstruments(markets: any): InstrumentMapping[] {

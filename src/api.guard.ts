@@ -1,11 +1,11 @@
 import { CanActivate, Injectable, ForbiddenException } from '@nestjs/common';
 import { ExecutionContext } from '@nestjs/common';
 import { Observable } from 'rxjs';
-import { ConfigService } from '@nestjs/config';
+import { config } from './config';
 
 @Injectable()
 export class ApiGuard implements CanActivate {
-  constructor(private readonly configService: ConfigService) {}
+  constructor() {}
 
   canActivate(
     context: ExecutionContext,
@@ -15,7 +15,7 @@ export class ApiGuard implements CanActivate {
 
     if (!apiKey) return false;
 
-    if (apiKey === this.configService.get('API_KEY')) {
+    if (apiKey === config.apiKey) {
       return true;
     }
 
