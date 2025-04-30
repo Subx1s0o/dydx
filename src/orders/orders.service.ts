@@ -12,6 +12,7 @@ import {
   CompositeClient,
   OrderFlags,
   OrderStatus,
+  OrderTimeInForce,
   SubaccountInfo,
 } from '@dydxprotocol/v4-client-js';
 import {
@@ -43,8 +44,14 @@ export class OrdersService {
   async createOrder(data: CreateOrderDto) {
     const dydxInstrument = formatToDydxInstrument(data.instrument);
 
-    if (data.time_in_force === 'FOK') {
-      throw new BadRequestException('FOK is not supported');
+    if (
+      data.time_in_force === 'FOK' ||
+      data.time_in_force === 'IOC' ||
+      (data.time_in_force as string) === 'GTC'
+    ) {
+      throw new BadRequestException(
+        `${data.time_in_force} is not supported, please use GTD or IOC`,
+      );
     }
 
     try {
@@ -56,10 +63,10 @@ export class OrdersService {
         data.limit_price ? data.limit_price : 0, // LIMIT PRICE
         data.quantity, // QUANTITY
         +data.client_order_id, // CLIENT ORDER ID
-        data.time_in_force, // TIME IN FORCE
-        data.time_in_force === 'GTT' ? 86400 : undefined, // GOOD TILL TIME IN SECONDS
+        data.time_in_force === 'GTD' && OrderTimeInForce.GTT, // TIME IN FORCE
+        data.time_in_force === 'GTD' ? 86400 : undefined, // GOOD TILL TIME IN SECONDS
         undefined, // EXECUTION
-        data.time_in_force === 'GTT' ? true : undefined, // POST ONLY
+        data.time_in_force === 'GTD' ? true : undefined, // POST ONLY
         undefined, // REDUCE ONLY
       );
 

@@ -12,6 +12,8 @@ import {
   OrderTimeInForce,
 } from '@dydxprotocol/v4-client-js';
 
+import { Transform } from 'class-transformer';
+
 export class CreateOrderDto {
   @IsNotEmpty()
   instrument: string;
@@ -30,8 +32,11 @@ export class CreateOrderDto {
   side: OrderSide;
 
   @IsOptional()
-  @IsIn(Object.keys(OrderTimeInForce))
-  time_in_force?: OrderTimeInForce;
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.toUpperCase() : value,
+  )
+  @IsIn([...Object.keys(OrderTimeInForce), 'GTD'])
+  time_in_force?: OrderTimeInForce | 'GTD';
 
   @ValidateIf((o) => o.type == OrderType.LIMIT)
   @IsOptional()
