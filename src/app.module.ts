@@ -8,6 +8,7 @@ import { InstrumentsModule } from './instruments/instruments.module';
 import { AccountModule } from './account/account.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import * as redisStore from 'cache-manager-redis-store';
+import { RedisModule } from './redis/redis.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import * as redisStore from 'cache-manager-redis-store';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    RedisModule,
     OrderBookModule,
     OrdersModule,
     InstrumentsModule,
@@ -25,9 +27,10 @@ import * as redisStore from 'cache-manager-redis-store';
       isGlobal: true,
       useFactory: async (configService: ConfigService) => ({
         store: redisStore,
-        host: configService.get('REDIS_HOST') || 'localhost',
-        port: configService.get('REDIS_PORT') || 6379,
-        ttl: 60, // 60 seconds
+        socket: {
+          host: configService.get('REDIS_HOST') || 'localhost',
+          port: configService.get('REDIS_PORT') || 6379,
+        },
       }),
       inject: [ConfigService],
     }),

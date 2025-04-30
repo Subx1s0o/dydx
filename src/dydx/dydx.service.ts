@@ -8,10 +8,10 @@ import {
   BECH32_PREFIX,
 } from '@dydxprotocol/v4-client-js';
 
-import { EventEmitter2 } from 'eventemitter2';
 import { ConfigService } from '@nestjs/config';
 import { DydxSocketMessage } from 'types/dydx-message.type';
 import { config } from 'src/config';
+import { RedisService } from '../redis/redis.service';
 
 @Injectable()
 export class DydxService implements OnModuleInit, OnModuleDestroy {
@@ -29,7 +29,7 @@ export class DydxService implements OnModuleInit, OnModuleDestroy {
   private reconnectAttempts = 0;
 
   constructor(
-    private readonly eventEmitter: EventEmitter2,
+    private readonly redisService: RedisService,
     private readonly configService: ConfigService,
   ) {}
 
@@ -81,7 +81,7 @@ export class DydxService implements OnModuleInit, OnModuleDestroy {
           this.reconnectAttempts = 0;
           this.startHeartbeat();
 
-          this.eventEmitter.emit('websocketConnected');
+          this.redisService.publish('websocket', { event: 'connected' });
         },
 
         // On disconnect AKA not working
@@ -95,7 +95,7 @@ export class DydxService implements OnModuleInit, OnModuleDestroy {
             const data: DydxSocketMessage = JSON.parse(message.data);
 
             if (data.channel === 'v4_orderbook') {
-              this.eventEmitter.emit('handleOrderbookMessage', data.id, data);
+              this.redisService.publish('orderbook', { id: data.id, data });
             }
 
             // TODO: Handle other channels
@@ -205,7 +205,7 @@ export class DydxService implements OnModuleInit, OnModuleDestroy {
 
     if (this.isWsConnected) {
       this.isWsConnected = false;
-      this.eventEmitter.emit('websocketDisconnected');
+      this.redisService.publish('websocket', { event: 'disconnected' });
     }
 
     if (this.wsClient) {
@@ -254,7 +254,6 @@ export class DydxService implements OnModuleInit, OnModuleDestroy {
     this.restClient = null;
     this.isWsConnected = false;
 
-    this.eventEmitter.emit('websocketDisconnected');
-    this.eventEmitter.removeAllListeners();
+    this.redisService.publish('websocket', { event: 'disconnected' });
   }
 }

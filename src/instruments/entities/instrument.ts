@@ -8,4 +8,5 @@ export class Instrument {
   price_decimals: string;
   quantity_decimals: string;
   quantity_increment?: string;
+  dydx_instrument?: string;
 }

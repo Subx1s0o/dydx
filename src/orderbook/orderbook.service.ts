@@ -1,47 +1,94 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { GetOrderBookDto } from './dto/get-orderbook.dto';
 import { config } from 'src/config';
 import { OrderbookDto } from './dto/orderbook.dto';
 import { DydxService } from '../dydx/dydx.service';
-import { OnEvent } from '@nestjs/event-emitter';
 import * as crc32 from 'crc-32';
-import { findMatchingInstruments, InstrumentMapping } from 'utils/utils';
+import { InstrumentMapping } from 'utils/utils';
+import { RedisService } from '../redis/redis.service';
+import { InstrumentsService } from 'src/instruments/instruments.service';
 
 @Injectable()
-export class OrderBookService {
+export class OrderBookService implements OnModuleInit {
   private orderbooks = new Map<string, OrderbookDto>();
   private instrumentMappings = new Map<string, InstrumentMapping>();
+  private dydxToOriginalMap = new Map<string, string>();
 
-  constructor(private readonly dydxService: DydxService) {}
+  constructor(
+    private readonly dydxService: DydxService,
+    private readonly redisService: RedisService,
+    private readonly instrumentsService: InstrumentsService,
+  ) {}
 
-  @OnEvent('websocketConnected')
-  async handleWebSocketConnected() {
-    const res = await this.dydxService
-      .getRestClient()
-      .indexerClient.markets.getPerpetualMarkets();
+  async onModuleInit() {
+    await this.redisService.subscribe('websocket', (message) => {
+      if (message.event === 'connected') {
+        this.handleWebSocketConnected();
+      } else if (message.event === 'disconnected') {
+        this.handleWebSocketDisconnect();
+      }
+    });
 
-    const availableInstruments = findMatchingInstruments(res.markets);
-
-    availableInstruments.forEach((instrument) => {
-      this.instrumentMappings.set(instrument.original, instrument);
-      this.dydxService.subcribeTo('v4_orderbook', { id: instrument.dydx });
+    await this.redisService.subscribe('orderbook', (message) => {
+      this.handleOrderbookMessage(message.id, message.data);
     });
   }
 
-  @OnEvent('websocketDisconnected')
+  async handleWebSocketConnected() {
+    const allInstruments = await this.instrumentsService.getInstruments();
+
+    this.instrumentMappings.clear();
+    this.dydxToOriginalMap.clear();
+
+    const configuredInstruments = config.instruments;
+
+    for (const configInstrument of configuredInstruments) {
+      const matchedInstrument = allInstruments.find(
+        (inst) => inst.instrument_name === configInstrument,
+      );
+
+      if (matchedInstrument && matchedInstrument.dydx_instrument) {
+        const mapping = {
+          original: configInstrument,
+          dydx: matchedInstrument.dydx_instrument,
+        };
+
+        this.instrumentMappings.set(configInstrument, mapping);
+        this.dydxToOriginalMap.set(
+          matchedInstrument.dydx_instrument,
+          configInstrument,
+        );
+
+        this.dydxService.subcribeTo('v4_orderbook', {
+          id: matchedInstrument.dydx_instrument,
+        });
+      } else {
+        console.warn(
+          `Could not find mapping for configured instrument: ${configInstrument}`,
+        );
+      }
+    }
+  }
+
   handleWebSocketDisconnect() {
     console.log('Clearing all orderbook data due to WebSocket disconnect');
     this.orderbooks.clear();
   }
 
-  @OnEvent('handleOrderbookMessage')
   async handleOrderbookMessage(instrument: string, data: any) {
-    const mapping = Array.from(this.instrumentMappings.values()).find(
-      (mapping) => mapping.dydx === instrument,
-    );
+    const originalInstrument = this.dydxToOriginalMap.get(instrument);
+
+    if (!originalInstrument) {
+      console.warn(`No mapping found for instrument: ${instrument}`);
+      return;
+    }
+
+    const mapping = this.instrumentMappings.get(originalInstrument);
 
     if (!mapping) {
-      console.warn(`No mapping found for instrument: ${instrument}`);
+      console.warn(
+        `No mapping found for original instrument: ${originalInstrument}`,
+      );
       return;
     }
 

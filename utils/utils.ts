@@ -18,13 +18,11 @@ export function formatFromDydxInstrument(dydxInstrument: string): string {
 }
 
 export function findMatchingInstruments(markets: any): InstrumentMapping[] {
-  const availableInstruments = Object.keys(markets);
-
   return config.instruments
     .map((instrument) => {
       const dydxFormat = formatToDydxInstrument(instrument);
 
-      if (availableInstruments.includes(dydxFormat)) {
+      if (markets.includes(dydxFormat)) {
         return {
           original: instrument,
           dydx: dydxFormat,
