@@ -2,7 +2,6 @@ import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
-// Define type for message handlers
 type MessageHandler = (message: any) => void;
 
 @Injectable()

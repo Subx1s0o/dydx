@@ -12,7 +12,8 @@ import { ConfigService } from '@nestjs/config';
 import { DydxSocketMessage } from 'types/dydx-message.type';
 import { config } from 'src/config';
 import { RedisService } from '../redis/redis.service';
-
+import { RedisEvent, RedisMessage } from 'src/redis/event.enum';
+import { DydxChannel } from './dydx.enum';
 @Injectable()
 export class DydxService implements OnModuleInit, OnModuleDestroy {
   private restClient: CompositeClient | null = null;
@@ -81,7 +82,9 @@ export class DydxService implements OnModuleInit, OnModuleDestroy {
           this.reconnectAttempts = 0;
           this.startHeartbeat();
 
-          this.redisService.publish('websocket', { event: 'connected' });
+          this.redisService.publish(RedisEvent.WEBSOCKET, {
+            event: RedisMessage.CONNECTED,
+          });
         },
 
         // On disconnect AKA not working
@@ -94,8 +97,11 @@ export class DydxService implements OnModuleInit, OnModuleDestroy {
           try {
             const data: DydxSocketMessage = JSON.parse(message.data);
 
-            if (data.channel === 'v4_orderbook') {
-              this.redisService.publish('orderbook', { id: data.id, data });
+            if (data.channel === DydxChannel.ORDERBOOK) {
+              this.redisService.publish(RedisEvent.ORDERBOOK, {
+                id: data.id,
+                data,
+              });
             }
 
             // TODO: Handle other channels
@@ -205,7 +211,9 @@ export class DydxService implements OnModuleInit, OnModuleDestroy {
 
     if (this.isWsConnected) {
       this.isWsConnected = false;
-      this.redisService.publish('websocket', { event: 'disconnected' });
+      this.redisService.publish(RedisEvent.WEBSOCKET, {
+        event: RedisMessage.DISCONNECTED,
+      });
     }
 
     if (this.wsClient) {
@@ -254,6 +262,8 @@ export class DydxService implements OnModuleInit, OnModuleDestroy {
     this.restClient = null;
     this.isWsConnected = false;
 
-    this.redisService.publish('websocket', { event: 'disconnected' });
+    this.redisService.publish(RedisEvent.WEBSOCKET, {
+      event: RedisMessage.DISCONNECTED,
+    });
   }
 }

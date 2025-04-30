@@ -7,6 +7,8 @@ import * as crc32 from 'crc-32';
 import { InstrumentMapping } from 'utils/utils';
 import { RedisService } from '../redis/redis.service';
 import { InstrumentsService } from 'src/instruments/instruments.service';
+import { RedisEvent, RedisMessage } from 'src/redis/event.enum';
+import { DydxChannel } from 'src/dydx/dydx.enum';
 
 @Injectable()
 export class OrderBookService implements OnModuleInit {
@@ -21,15 +23,15 @@ export class OrderBookService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    await this.redisService.subscribe('websocket', (message) => {
-      if (message.event === 'connected') {
+    await this.redisService.subscribe(RedisEvent.WEBSOCKET, (message) => {
+      if (message.event === RedisMessage.CONNECTED) {
         this.handleWebSocketConnected();
-      } else if (message.event === 'disconnected') {
+      } else if (message.event === RedisMessage.DISCONNECTED) {
         this.handleWebSocketDisconnect();
       }
     });
 
-    await this.redisService.subscribe('orderbook', (message) => {
+    await this.redisService.subscribe(RedisEvent.ORDERBOOK, (message) => {
       this.handleOrderbookMessage(message.id, message.data);
     });
   }
@@ -59,7 +61,7 @@ export class OrderBookService implements OnModuleInit {
           configInstrument,
         );
 
-        this.dydxService.subcribeTo('v4_orderbook', {
+        this.dydxService.subcribeTo(DydxChannel.ORDERBOOK, {
           id: matchedInstrument.dydx_instrument,
         });
       } else {

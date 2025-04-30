@@ -19,7 +19,10 @@ export class InstrumentsService implements OnModuleInit {
   }
 
   async getInstruments(): Promise<Instrument[]> {
-    const cachedInstruments = await this.cacheManager.get('instruments');
+    const cacheKey = 'instruments';
+    const cacheTtl = 2629743;
+
+    const cachedInstruments = await this.cacheManager.get(cacheKey);
 
     if (cachedInstruments) {
       return cachedInstruments as Instrument[];
@@ -48,7 +51,7 @@ export class InstrumentsService implements OnModuleInit {
       });
     }
 
-    await this.cacheManager.set('instruments', formattedInstruments, 2629743);
+    await this.cacheManager.set(cacheKey, formattedInstruments, cacheTtl);
     return formattedInstruments;
   }
 }
