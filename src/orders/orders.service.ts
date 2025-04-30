@@ -11,6 +11,7 @@ import { DydxService } from 'src/dydx/dydx.service';
 import {
   CompositeClient,
   OrderFlags,
+  OrderStatus,
   SubaccountInfo,
 } from '@dydxprotocol/v4-client-js';
 import {
@@ -42,6 +43,10 @@ export class OrdersService {
   async createOrder(data: CreateOrderDto) {
     const dydxInstrument = formatToDydxInstrument(data.instrument);
 
+    if (data.time_in_force === 'FOK') {
+      throw new BadRequestException('FOK is not supported');
+    }
+
     try {
       await this.client.placeOrder(
         this.subaccount, // SUBACCOUNT
@@ -57,7 +62,21 @@ export class OrdersService {
         data.time_in_force === 'GTT' ? true : undefined, // POST ONLY
         undefined, // REDUCE ONLY
       );
-      return { message: 'Order created' };
+
+      const openedOrders = await this.getOrders({
+        instrument: data.instrument,
+        side: data.side,
+        status: OrderStatus.OPEN,
+        type: data.type,
+        limit: 10,
+        returnLasts: 'true',
+      });
+
+      const createdOrder = openedOrders.find(
+        (order) => order.client_order_id === data.client_order_id,
+      );
+
+      return createdOrder;
     } catch (error) {
       throw new BadRequestException('Error creating order: ' + error.message);
     }
@@ -122,6 +141,7 @@ export class OrdersService {
         goodTilBlock, // GOOD TILL BLOCK
         goodTilTimeInSeconds, // GOOD TILL TIME IN SECONDS
       );
+      return { order_id: data.order_id };
     } catch (err) {
       throw new NotFoundException(`Cancel order failed: ${err.message}`);
     }
@@ -142,6 +162,9 @@ export class OrdersService {
       data.status, // ORDER STATUS
       data.type, // ORDER TYPE
       data.limit, // LIMIT
+      undefined, // GTB before or at
+      undefined, // GTBT before or at
+      Boolean(data.returnLasts), // RETURN LASTS
     );
 
     let result = orders;
@@ -201,7 +224,7 @@ export class OrdersService {
     return order;
   }
 
-  private transformOrder(order: any): Order {
+  private transformOrder(order: any, data?: any): Order {
     const customOrder = new Order();
     customOrder.order_id = order.id;
     customOrder.client_order_id = order.clientId;
@@ -209,8 +232,9 @@ export class OrdersService {
     customOrder.status = order.status;
     customOrder.side = order.side;
     customOrder.instrument = formatFromDydxInstrument(order.ticker);
-    customOrder.quantity = order.size;
-    customOrder.price = order.limitPrice;
+    customOrder.quantity = data?.quantity ?? order.size;
+    customOrder.executed_quantity = order.size;
+    customOrder.limit_price = order.limitPrice;
     customOrder.time_in_force = order.timeInForce;
     customOrder.updated_at = order.updatedAt;
 

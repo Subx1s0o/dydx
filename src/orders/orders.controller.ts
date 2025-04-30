@@ -6,6 +6,7 @@ import {
   Post,
   Put,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -13,8 +14,10 @@ import { CancelOrderDto } from './dto/cancel-order.dto';
 import { findOneOrderDto } from './dto/find-one-order.dto';
 import { GetOrdersDto } from './dto/find-all-orders.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
+import { ApiGuard } from 'src/api.guard';
 
 @Controller('v1/order')
+@UseGuards(ApiGuard)
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 

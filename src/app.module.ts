@@ -1,12 +1,13 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { EventEmitterModule } from '@nestjs/event-emitter';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { OrderBookModule } from './orderbook/orderbook.module';
 import { OrdersModule } from './orders/orders.module';
 import { InstrumentsModule } from './instruments/instruments.module';
 import { AccountModule } from './account/account.module';
 import { CacheModule } from '@nestjs/cache-manager';
+import * as redisStore from 'cache-manager-redis-store';
 
 @Module({
   imports: [
@@ -20,8 +21,15 @@ import { CacheModule } from '@nestjs/cache-manager';
     OrdersModule,
     InstrumentsModule,
     AccountModule,
-    CacheModule.register({
+    CacheModule.registerAsync({
       isGlobal: true,
+      useFactory: async (configService: ConfigService) => ({
+        store: redisStore,
+        host: configService.get('REDIS_HOST') || 'localhost',
+        port: configService.get('REDIS_PORT') || 6379,
+        ttl: 60, // 60 seconds
+      }),
+      inject: [ConfigService],
     }),
   ],
   controllers: [AppController],

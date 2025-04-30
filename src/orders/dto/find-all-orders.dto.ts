@@ -35,4 +35,8 @@ export class GetOrdersDto {
   @IsNumber()
   @Type(() => Number)
   limit?: number = 10;
+
+  @IsOptional()
+  @IsString()
+  returnLasts?: string;
 }

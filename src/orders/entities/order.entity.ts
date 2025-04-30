@@ -13,8 +13,9 @@ export class Order {
   type: OrderType;
   side: OrderSide;
   status: OrderStatus;
-  price?: string;
+  limit_price?: string;
   order_flags?: string;
-  quantity?: string;
+  quantity: string;
+  executed_quantity: string;
   updated_at?: string;
 }
